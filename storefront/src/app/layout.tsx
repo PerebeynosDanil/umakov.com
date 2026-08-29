@@ -5,7 +5,8 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Providers } from "@/providers/providers";
 import { ChatWidget } from "@/components/chat-widget";
-import { getCategoryTree, toMenu } from "@/lib/categories";
+import { categoryImages, getCategoryTree, toMenu } from "@/lib/categories";
+import { directCategoryImages, getCatalogIndex } from "@/lib/catalog-index";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,7 +24,13 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const tree = await getCategoryTree();
-  const menuCategories = toMenu(tree.roots);
+  let images: Record<string, string> = {};
+  try {
+    images = categoryImages(tree.roots, directCategoryImages(await getCatalogIndex()));
+  } catch {
+    // без картинок меню тоже живёт
+  }
+  const menuCategories = toMenu(tree.roots, images);
 
   return (
     <html lang="ru" className={`${manrope.variable} h-full antialiased`}>

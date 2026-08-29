@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -14,6 +15,19 @@ import { NAV } from "@/lib/nav";
 import { Logo } from "@/components/logo";
 import { useCart } from "@/providers/cart";
 import type { MenuCategory } from "@/lib/categories";
+
+function CatIcon({ src, size = 32 }: { src?: string; size?: number }) {
+  return (
+    <span
+      className="relative shrink-0 overflow-hidden rounded-md border border-line bg-white"
+      style={{ width: size, height: size }}
+    >
+      {src && (
+        <Image src={src} alt="" fill sizes={`${size}px`} className="object-contain p-0.5" />
+      )}
+    </span>
+  );
+}
 
 export function Header({ categories = [] }: { categories?: MenuCategory[] }) {
   const [open, setOpen] = useState(false);
@@ -55,13 +69,14 @@ export function Header({ categories = [] }: { categories?: MenuCategory[] }) {
                           href={`/products?cat=${c.id}`}
                           onMouseEnter={() => setActiveRoot(i)}
                           onClick={() => setMega(false)}
-                          className={`flex items-center justify-between gap-2 px-4 py-2 text-[13px] font-semibold transition-colors ${
+                          className={`flex items-center gap-2.5 px-4 py-1.5 text-[13px] font-semibold transition-colors ${
                             i === activeRoot
                               ? "bg-white text-ink"
                               : "text-muted hover:text-ink"
                           }`}
                         >
-                          {c.name}
+                          <CatIcon src={c.image} size={30} />
+                          <span className="min-w-0 flex-1">{c.name}</span>
                           <ArrowRight
                             className={`size-3.5 shrink-0 ${i === activeRoot ? "text-bronze" : "opacity-0"}`}
                           />
@@ -79,8 +94,9 @@ export function Header({ categories = [] }: { categories?: MenuCategory[] }) {
                             <Link
                               href={`/products?cat=${c2.id}`}
                               onClick={() => setMega(false)}
-                              className="text-[13px] font-extrabold hover:text-bronze"
+                              className="flex items-center gap-2 text-[13px] font-extrabold hover:text-bronze"
                             >
+                              <CatIcon src={c2.image} size={32} />
                               {c2.name}
                             </Link>
                             {c2.children.length > 0 && (
@@ -90,8 +106,9 @@ export function Header({ categories = [] }: { categories?: MenuCategory[] }) {
                                     <Link
                                       href={`/products?cat=${c3.id}`}
                                       onClick={() => setMega(false)}
-                                      className="text-[12.5px] text-muted hover:text-ink"
+                                      className="flex items-center gap-2 text-[12.5px] text-muted hover:text-ink"
                                     >
+                                      <CatIcon src={c3.image} size={24} />
                                       {c3.name}
                                     </Link>
                                   </li>

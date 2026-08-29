@@ -4,10 +4,16 @@ import { ChevronRight, Search, SlidersHorizontal } from "lucide-react";
 import type { HttpTypes } from "@medusajs/types";
 import { medusaFetch, getRegionId } from "@/lib/medusa-server";
 import { formatPrice } from "@/lib/format";
-import { getCategoryTree, pathTo, subtreeIds } from "@/lib/categories";
+import {
+  categoryImages,
+  getCategoryTree,
+  pathTo,
+  subtreeIds,
+} from "@/lib/categories";
 import {
   applyFacets,
   countInSubtree,
+  directCategoryImages,
   getCatalogIndex,
   type Facets,
 } from "@/lib/catalog-index";
@@ -89,7 +95,12 @@ export default async function ProductsPage({
   let products: HttpTypes.StoreProduct[] = [];
   let count = 0;
   let facets: Facets = {};
-  let subcatTiles: { id: string; name: string; count: number }[] = [];
+  let subcatTiles: {
+    id: string;
+    name: string;
+    count: number;
+    image?: string;
+  }[] = [];
 
   const fetchPage = async (pageIds: string[]) => {
     if (!pageIds.length) return;
@@ -157,11 +168,13 @@ export default async function ProductsPage({
     const node = findNode(tree.roots);
     if (node && node.children.length > 0) {
       const index = await getCatalogIndex();
+      const images = categoryImages(tree.roots, directCategoryImages(index));
       subcatTiles = node.children
         .map((c) => ({
           id: c.id,
           name: c.name,
           count: countInSubtree(index, subtreeIds(tree, c.id)),
+          image: images[c.id],
         }))
         .filter((t) => t.count > 0);
     }
@@ -255,9 +268,14 @@ export default async function ProductsPage({
             <Link
               key={t.id}
               href={`/products?cat=${t.id}`}
-              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-4 py-3 text-sm font-bold transition-shadow hover:shadow-md"
+              className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm font-bold transition-shadow hover:shadow-md"
             >
-              <span className="min-w-0 truncate">{t.name}</span>
+              <span className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-line bg-white">
+                {t.image && (
+                  <Image src={t.image} alt="" fill sizes="48px" className="object-contain p-1" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{t.name}</span>
               <span className="shrink-0 rounded-full bg-paper px-2 py-0.5 text-xs font-semibold text-muted">
                 {t.count}
               </span>

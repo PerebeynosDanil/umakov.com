@@ -12,6 +12,7 @@ export type IndexedProduct = {
   id: string;
   title: string;
   created: number;
+  thumbnail: string | null;
   /** значения опций: { "Material": ["Stainless steel AISI 304", …] } */
   opts: Record<string, string[]>;
   cats: string[];
@@ -21,6 +22,7 @@ type RawProduct = {
   id: string;
   title: string;
   created_at: string;
+  thumbnail: string | null;
   options?: { title: string; values?: { value: string }[] }[] | null;
   categories?: { id: string }[] | null;
 };
@@ -37,7 +39,7 @@ async function buildIndex(): Promise<IndexedProduct[]> {
       {
         limit: 1000,
         offset,
-        fields: "id,title,created_at,*options.values,*categories",
+        fields: "id,title,created_at,thumbnail,*options.values,*categories",
       },
       { revalidate: 600 }
     );
@@ -52,6 +54,7 @@ async function buildIndex(): Promise<IndexedProduct[]> {
         id: p.id,
         title: p.title,
         created: Date.parse(p.created_at) || 0,
+        thumbnail: p.thumbnail ?? null,
         opts,
         cats: (p.categories ?? []).map((c) => c.id),
       });
@@ -152,6 +155,20 @@ export function applyFacets(
   }
 
   return { ids: matched.map((p) => p.id), facets };
+}
+
+/** Фото первого товара каждой категории — иконки для меню и плиток. */
+export function directCategoryImages(
+  items: IndexedProduct[]
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const p of items) {
+    if (!p.thumbnail) continue;
+    for (const c of p.cats) {
+      if (!(c in out)) out[c] = p.thumbnail;
+    }
+  }
+  return out;
 }
 
 /** Число товаров в поддереве категории (для плиток подкатегорий). */

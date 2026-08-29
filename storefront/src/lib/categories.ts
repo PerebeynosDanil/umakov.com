@@ -94,23 +94,57 @@ export function pathTo(
   return path;
 }
 
+/**
+ * Иконка для каждой категории: своё фото (первый товар в категории),
+ * а если её нет — фото из первой ветки-потомка.
+ */
+export function categoryImages(
+  roots: CategoryNode[],
+  direct: Record<string, string>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  const dfs = (n: CategoryNode): string | undefined => {
+    let img = direct[n.id];
+    for (const c of n.children) {
+      const childImg = dfs(c);
+      if (!img && childImg) img = childImg;
+    }
+    if (img) out[n.id] = img;
+    return img;
+  };
+  roots.forEach(dfs);
+  return out;
+}
+
 /** Урезанное дерево для меню в шапке: 3 уровня, потомки с лимитом. */
 export type MenuCategory = {
   id: string;
   name: string;
-  children: { id: string; name: string; children: { id: string; name: string }[] }[];
+  image?: string;
+  children: {
+    id: string;
+    name: string;
+    image?: string;
+    children: { id: string; name: string; image?: string }[];
+  }[];
 };
 
-export function toMenu(roots: CategoryNode[], level3Cap = 7): MenuCategory[] {
+export function toMenu(
+  roots: CategoryNode[],
+  images: Record<string, string> = {},
+  level3Cap = 7
+): MenuCategory[] {
   return roots.map((r) => ({
     id: r.id,
     name: r.name,
+    image: images[r.id],
     children: r.children.map((c2) => ({
       id: c2.id,
       name: c2.name,
+      image: images[c2.id],
       children: c2.children
         .slice(0, level3Cap)
-        .map((c3) => ({ id: c3.id, name: c3.name })),
+        .map((c3) => ({ id: c3.id, name: c3.name, image: images[c3.id] })),
     })),
   }));
 }

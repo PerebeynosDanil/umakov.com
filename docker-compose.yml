@@ -24,6 +24,18 @@ services:
     volumes:
       - redisdata:/data
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.15
+    container_name: umakov-meilisearch
+    environment:
+      MEILI_MASTER_KEY: umakov-meili-dev-key
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilidata:/meili_data
+
 volumes:
   pgdata:
   redisdata:
+  meilidata:

@@ -50,11 +50,25 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    await sdk.auth.login("customer", "emailpass", { email, password });
-    const { customer } = await sdk.store.customer.retrieve();
-    setCustomer(customer);
+  /** Привязать гостевую корзину к вошедшему покупателю. */
+  const claimCart = useCallback(async () => {
+    try {
+      const cartId = localStorage.getItem("umakov_cart_id");
+      if (cartId) await sdk.store.cart.transferCart(cartId);
+    } catch {
+      // корзины может не быть — не страшно
+    }
   }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      await sdk.auth.login("customer", "emailpass", { email, password });
+      const { customer } = await sdk.store.customer.retrieve();
+      setCustomer(customer);
+      await claimCart();
+    },
+    [claimCart]
+  );
 
   const register = useCallback(
     async (data: {
@@ -78,8 +92,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       });
       const { customer } = await sdk.store.customer.retrieve();
       setCustomer(customer);
+      await claimCart();
     },
-    []
+    [claimCart]
   );
 
   const logout = useCallback(async () => {

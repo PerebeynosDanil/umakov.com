@@ -22,6 +22,8 @@ type CartContextValue = {
   updateItem: (lineId: string, quantity: number) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
   refresh: () => Promise<void>;
+  /** Забыть корзину локально (после успешного оформления заказа). */
+  reset: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -127,14 +129,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [cart]
   );
 
+  const reset = useCallback(() => {
+    localStorage.removeItem(CART_ID_KEY);
+    setCart(null);
+  }, []);
+
   const itemCount = useMemo(
     () => cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0,
     [cart]
   );
 
   const value = useMemo(
-    () => ({ cart, itemCount, busy, addItem, updateItem, removeItem, refresh }),
-    [cart, itemCount, busy, addItem, updateItem, removeItem, refresh]
+    () => ({ cart, itemCount, busy, addItem, updateItem, removeItem, refresh, reset }),
+    [cart, itemCount, busy, addItem, updateItem, removeItem, refresh, reset]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -1,11 +1,35 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { LogOut, Package, UserRound } from "lucide-react";
+import Link from "next/link";
+import { Eye, EyeOff, LogOut, Package, UserRound, Wand2 } from "lucide-react";
 import type { HttpTypes } from "@medusajs/types";
 import { useAccount } from "@/providers/account";
 import { sdk } from "@/lib/medusa";
 import { formatPrice } from "@/lib/format";
+import { generatePassword } from "@/lib/password";
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+      <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.2-2.2H12v4.4h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.6 2.8c2.2-2 3.8-5 3.8-8.8z" />
+      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.6-2.8c-1 .7-2.4 1.2-4.3 1.2-3.3 0-6.1-2.2-7.1-5.2L1.2 17C3.1 21.1 7.2 24 12 24z" />
+      <path fill="#FBBC05" d="M4.9 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.2 7C.4 8.5 0 10.2 0 12s.4 3.5 1.2 5l3.7-2.7z" />
+      <path fill="#EA4335" d="M12 4.7c2.3 0 3.9 1 4.8 1.9l3.2-3.2C18 1.3 15.2 0 12 0 7.2 0 3.1 2.9 1.2 7l3.7 2.7c1-3 3.8-5 7.1-5z" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+      <path
+        fill="#1877F2"
+        d="M24 12c0-6.6-5.4-12-12-12S0 5.4 0 12c0 6 4.4 11 10.1 11.9v-8.4H7.1V12h3v-2.6c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.3l-.5 3.5h-2.8v8.4C19.6 23 24 18 24 12z"
+      />
+    </svg>
+  );
+}
 
 export default function AccountPage() {
   const { customer, loading } = useAccount();
@@ -29,12 +53,43 @@ function AuthForms() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+
+  const genPassword = () => {
+    const p = generatePassword();
+    setPass(p);
+    setPass2(p);
+    setShowPass(true);
+  };
+
+  const social = async (provider: "google" | "facebook") => {
+    setError("");
+    const label = provider === "google" ? "Google" : "Facebook";
+    try {
+      const res = await sdk.auth.login("customer", provider, {});
+      if (typeof res === "object" && res && "location" in res) {
+        window.location.href = (res as { location: string }).location;
+        return;
+      }
+      setError(`Не удалось начать вход через ${label}.`);
+    } catch {
+      setError(
+        `Вход через ${label} пока не настроен — используйте почту и пароль.`
+      );
+    }
+  };
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    setBusy(true);
     const fd = new FormData(e.currentTarget);
+    if (mode === "register" && fd.get("password") !== fd.get("password2")) {
+      setError("Пароли не совпадают.");
+      return;
+    }
+    setBusy(true);
     try {
       if (mode === "login") {
         await login(String(fd.get("email")), String(fd.get("password")));
@@ -42,15 +97,15 @@ function AuthForms() {
         await register({
           email: String(fd.get("email")),
           password: String(fd.get("password")),
-          first_name: String(fd.get("first_name")),
-          last_name: String(fd.get("last_name")),
+          first_name: String(fd.get("first_name")).trim(),
+          last_name: String(fd.get("last_name")).trim(),
         });
       }
     } catch {
       setError(
         mode === "login"
           ? "Не удалось войти: проверьте почту и пароль."
-          : "Не удалось зарегистрироваться. Возможно, такая почта уже используется."
+          : "Не удалось зарегистрироваться. Возможно, такая почта уже используется — попробуйте войти или восстановить пароль."
       );
     } finally {
       setBusy(false);
@@ -67,7 +122,10 @@ function AuthForms() {
           <button
             key={m}
             type="button"
-            onClick={() => setMode(m)}
+            onClick={() => {
+              setMode(m);
+              setError("");
+            }}
             className={`rounded-md py-2 transition-colors ${
               mode === m ? "bg-white shadow-sm" : "text-muted"
             }`}
@@ -84,15 +142,58 @@ function AuthForms() {
             <input name="last_name" required placeholder="Фамилия" className={input} />
           </div>
         )}
-        <input name="email" type="email" required placeholder="Эл. почта" className={input} />
         <input
-          name="password"
-          type="password"
+          name="email"
+          type="email"
           required
-          minLength={6}
-          placeholder="Пароль"
+          autoComplete="email"
+          placeholder="Эл. почта"
           className={input}
         />
+        <div className="relative">
+          <input
+            name="password"
+            type={showPass ? "text" : "password"}
+            required
+            minLength={8}
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            placeholder={mode === "login" ? "Пароль" : "Пароль (минимум 8 символов)"}
+            className={`${input} pr-11`}
+          />
+          <button
+            type="button"
+            aria-label={showPass ? "Скрыть пароль" : "Показать пароль"}
+            onClick={() => setShowPass(!showPass)}
+            className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md text-muted hover:bg-paper"
+          >
+            {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+        {mode === "register" && (
+          <>
+            <input
+              name="password2"
+              type={showPass ? "text" : "password"}
+              required
+              minLength={8}
+              value={pass2}
+              onChange={(e) => setPass2(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Повторите пароль"
+              className={input}
+            />
+            <button
+              type="button"
+              onClick={genPassword}
+              className="flex items-center gap-1.5 text-sm font-semibold text-bronze hover:underline"
+            >
+              <Wand2 className="size-4" />
+              Сгенерировать надёжный пароль
+            </button>
+          </>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
@@ -101,7 +202,41 @@ function AuthForms() {
         >
           {busy ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
         </button>
+        {mode === "login" && (
+          <p className="text-center">
+            <Link
+              href="/account/forgot"
+              className="text-sm font-semibold text-muted hover:text-ink"
+            >
+              Забыли пароль?
+            </Link>
+          </p>
+        )}
       </form>
+
+      <div className="mt-5 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-line" />
+        или войдите через
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => social("google")}
+          className="flex items-center justify-center gap-2 rounded-lg border border-line py-2.5 text-sm font-bold transition-colors hover:bg-paper"
+        >
+          <GoogleIcon />
+          Google
+        </button>
+        <button
+          type="button"
+          onClick={() => social("facebook")}
+          className="flex items-center justify-center gap-2 rounded-lg border border-line py-2.5 text-sm font-bold transition-colors hover:bg-paper"
+        >
+          <FacebookIcon />
+          Facebook
+        </button>
+      </div>
     </div>
   );
 }

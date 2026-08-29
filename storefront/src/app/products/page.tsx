@@ -12,7 +12,6 @@ import {
   type Facets,
 } from "@/lib/catalog-index";
 import { meiliSearch } from "@/lib/meili";
-import { CategorySidebar } from "@/components/category-sidebar";
 import { SortSelect } from "@/components/sort-select";
 import { FacetPanel } from "@/components/facet-panel";
 import { RowActions, type RowProduct } from "@/components/row-actions";
@@ -182,21 +181,17 @@ export default async function ProductsPage({
     return `/products?${p.toString()}`;
   };
 
+  const hasFilters =
+    Object.keys(facets).length > 0 ||
+    Object.values(filters).some((v) => v.length > 0);
+
   const sidebar = (
     <>
-      <p className="flex items-center gap-2 px-2.5 pb-2 text-xs font-bold uppercase tracking-wider text-muted">
+      <p className="flex items-center gap-2 px-1 pb-1 text-xs font-bold uppercase tracking-wider text-muted">
         <SlidersHorizontal className="size-3.5" />
-        Категории
+        Фильтры
       </p>
-      <CategorySidebar
-        roots={tree.roots}
-        selectedId={cat || undefined}
-        selectedPath={crumbs.map((c) => c.id)}
-        keep={{ q: q || undefined, sort: sort || undefined }}
-      />
-      <div className="mt-5">
-        <FacetPanel facets={facets} filters={filters} base={{ cat, sort, q }} />
-      </div>
+      <FacetPanel facets={facets} filters={filters} base={{ cat, sort, q }} />
     </>
   );
 
@@ -271,19 +266,25 @@ export default async function ProductsPage({
         </div>
       )}
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[270px_1fr]">
-        <aside className="hidden lg:block">
-          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
-            {sidebar}
-          </div>
-        </aside>
-        <details className="rounded-xl border border-line bg-white p-4 lg:hidden">
-          <summary className="flex items-center gap-2 text-sm font-bold">
-            <SlidersHorizontal className="size-4" />
-            Категории и фильтры
-          </summary>
-          <div className="mt-3 max-h-[70vh] overflow-y-auto">{sidebar}</div>
-        </details>
+      <div
+        className={`mt-6 ${hasFilters ? "grid gap-8 lg:grid-cols-[250px_1fr]" : ""}`}
+      >
+        {hasFilters && (
+          <aside className="hidden lg:block">
+            <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
+              {sidebar}
+            </div>
+          </aside>
+        )}
+        {hasFilters && (
+          <details className="rounded-xl border border-line bg-white p-4 lg:hidden">
+            <summary className="flex items-center gap-2 text-sm font-bold">
+              <SlidersHorizontal className="size-4" />
+              Фильтры
+            </summary>
+            <div className="mt-3 max-h-[70vh] overflow-y-auto">{sidebar}</div>
+          </details>
+        )}
 
         <div>
           {products.length === 0 ? (

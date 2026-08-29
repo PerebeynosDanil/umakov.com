@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
@@ -7,8 +8,14 @@ import { useCart } from "@/providers/cart";
 import { formatPrice } from "@/lib/format";
 
 export default function CartPage() {
-  const { cart, busy, updateItem, removeItem } = useCart();
+  const { cart, busy, updateItem, removeItem, refresh } = useCart();
   const items = cart?.items ?? [];
+
+  // при заходе на страницу подтягиваем корзину с сервера с актуальными суммами
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">

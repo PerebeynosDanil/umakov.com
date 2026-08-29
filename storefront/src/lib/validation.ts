@@ -19,6 +19,25 @@ const POSTAL_RE: Record<string, { re: RegExp; hint: string }> = {
   nl: { re: /^\d{4}\s?[A-Za-z]{2}$/, hint: "например 1012 AB" },
 };
 
+export type AddressFields = {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  address_1: string;
+  postal_code: string;
+  city: string;
+  country_code: string;
+};
+
+/** Проверка адреса без почты (кабинет: сохранённые адреса). */
+export function validateAddress(
+  v: AddressFields
+): Partial<Record<keyof AddressFields, string>> {
+  const all = validateCheckout({ ...v, email: "stub@stub.de" });
+  delete (all as Record<string, string>).email;
+  return all;
+}
+
 export type CheckoutFields = {
   first_name: string;
   last_name: string;

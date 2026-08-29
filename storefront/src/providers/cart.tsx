@@ -84,10 +84,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       try {
         const current = await ensureCart();
-        const { cart } = await sdk.store.cart.createLineItem(current.id, {
+        await sdk.store.cart.createLineItem(current.id, {
           variant_id: variantId,
           quantity,
         });
+        // ответ мутации приходит без пересчитанных сумм — берём свежую корзину
+        const { cart } = await sdk.store.cart.retrieve(current.id);
         setCart(cart);
       } finally {
         setBusy(false);
@@ -101,11 +103,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!cart) return;
       setBusy(true);
       try {
-        const { cart: updated } = await sdk.store.cart.updateLineItem(
-          cart.id,
-          lineId,
-          { quantity }
-        );
+        await sdk.store.cart.updateLineItem(cart.id, lineId, { quantity });
+        const { cart: updated } = await sdk.store.cart.retrieve(cart.id);
         setCart(updated);
       } finally {
         setBusy(false);

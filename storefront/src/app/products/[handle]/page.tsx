@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import type { HttpTypes } from "@medusajs/types";
 import { medusaFetch, getRegionId } from "@/lib/medusa-server";
 import { AddToCart } from "@/components/add-to-cart";
+import { ProductGallery } from "@/components/product-gallery";
 
 export async function generateMetadata({
   params,
@@ -45,42 +45,10 @@ export default async function ProductPage({
       </Link>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        <div>
-          {images[0] ? (
-            <div className="relative aspect-square overflow-hidden rounded-2xl border border-line bg-white">
-              <Image
-                src={images[0].url}
-                alt={product.title}
-                fill
-                preload
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-contain p-6"
-              />
-            </div>
-          ) : (
-            <div className="grid aspect-square place-items-center rounded-2xl border border-line text-muted">
-              Без фото
-            </div>
-          )}
-          {images.length > 1 && (
-            <div className="mt-4 flex gap-3 overflow-x-auto">
-              {images.slice(1, 6).map((img) => (
-                <div
-                  key={img.id}
-                  className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-line bg-white"
-                >
-                  <Image
-                    src={img.url}
-                    alt=""
-                    fill
-                    sizes="80px"
-                    className="object-contain p-1.5"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery
+          images={images.map((img) => ({ id: img.id, url: img.url }))}
+          alt={product.title}
+        />
 
         <div>
           <h1 className="text-2xl font-extrabold leading-tight tracking-tight lg:text-3xl">

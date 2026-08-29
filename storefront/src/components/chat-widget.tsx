@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { CONTACTS } from "@/lib/nav";
 import { formatPrice } from "@/lib/format";
+import { fulfillmentStatusRu, paymentStatusRu } from "@/lib/order-status";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Tab = "home" | "chat" | "track" | "help";
@@ -358,26 +359,6 @@ type TrackResult = {
   fulfillment_status: string;
 };
 
-const PAYMENT_RU: Record<string, string> = {
-  not_paid: "ожидает оплаты",
-  awaiting: "ожидает оплаты",
-  authorized: "подтверждена",
-  captured: "оплачен",
-  partially_captured: "оплачен частично",
-  refunded: "возврат средств",
-  canceled: "отменена",
-};
-
-const FULFILLMENT_RU: Record<string, string> = {
-  not_fulfilled: "готовится к отправке",
-  fulfilled: "собран",
-  partially_fulfilled: "собран частично",
-  shipped: "отправлен",
-  partially_shipped: "отправлен частично",
-  delivered: "доставлен",
-  canceled: "отменён",
-};
-
 function TrackTab() {
   const [result, setResult] = useState<TrackResult | null>(null);
   const [message, setMessage] = useState("");
@@ -448,14 +429,13 @@ function TrackTab() {
               <div className="flex justify-between">
                 <dt className="text-muted">Оплата</dt>
                 <dd className="font-semibold">
-                  {PAYMENT_RU[result.payment_status] ?? result.payment_status}
+                  {paymentStatusRu(result.payment_status)}
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted">Доставка</dt>
                 <dd className="font-semibold">
-                  {FULFILLMENT_RU[result.fulfillment_status] ??
-                    result.fulfillment_status}
+                  {fulfillmentStatusRu(result.fulfillment_status)}
                 </dd>
               </div>
               <div className="flex justify-between border-t border-line pt-1.5">

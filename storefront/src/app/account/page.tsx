@@ -2,12 +2,35 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, LogOut, Package, UserRound, Wand2 } from "lucide-react";
+import {
+  ChevronRight,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LogOut,
+  MapPin,
+  Package,
+  Pencil,
+  Plus,
+  Trash2,
+  UserRound,
+  Wand2,
+} from "lucide-react";
 import type { HttpTypes } from "@medusajs/types";
 import { useAccount } from "@/providers/account";
 import { sdk } from "@/lib/medusa";
 import { formatPrice } from "@/lib/format";
 import { generatePassword } from "@/lib/password";
+import {
+  fulfillmentStatusRu,
+  paymentStatusRu,
+  statusTone,
+  TONE_CLS,
+} from "@/lib/order-status";
+import { validateAddress, type AddressFields } from "@/lib/validation";
+
+const INPUT =
+  "w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-bronze";
 
 function GoogleIcon() {
   return (
@@ -35,18 +58,20 @@ export default function AccountPage() {
   const { customer, loading } = useAccount();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-extrabold tracking-tight">Личный кабинет</h1>
       {loading ? (
         <p className="mt-10 text-center text-muted">Загрузка…</p>
       ) : customer ? (
-        <Profile />
+        <Cabinet />
       ) : (
         <AuthForms />
       )}
     </div>
   );
 }
+
+/* ---------- вход / регистрация ---------- */
 
 function AuthForms() {
   const { login, register } = useAccount();
@@ -75,9 +100,7 @@ function AuthForms() {
       }
       setError(`Не удалось начать вход через ${label}.`);
     } catch {
-      setError(
-        `Вход через ${label} пока не настроен — используйте почту и пароль.`
-      );
+      setError(`Вход через ${label} пока не настроен — используйте почту и пароль.`);
     }
   };
 
@@ -112,9 +135,6 @@ function AuthForms() {
     }
   };
 
-  const input =
-    "w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-bronze";
-
   return (
     <div className="mx-auto mt-8 max-w-md rounded-2xl border border-line bg-white p-6">
       <div className="grid grid-cols-2 rounded-lg bg-paper p-1 text-center text-sm font-bold">
@@ -138,8 +158,8 @@ function AuthForms() {
       <form onSubmit={submit} className="mt-5 space-y-3">
         {mode === "register" && (
           <div className="grid grid-cols-2 gap-3">
-            <input name="first_name" required placeholder="Имя" className={input} />
-            <input name="last_name" required placeholder="Фамилия" className={input} />
+            <input name="first_name" required placeholder="Имя" className={INPUT} />
+            <input name="last_name" required placeholder="Фамилия" className={INPUT} />
           </div>
         )}
         <input
@@ -148,7 +168,7 @@ function AuthForms() {
           required
           autoComplete="email"
           placeholder="Эл. почта"
-          className={input}
+          className={INPUT}
         />
         <div className="relative">
           <input
@@ -160,7 +180,7 @@ function AuthForms() {
             onChange={(e) => setPass(e.target.value)}
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             placeholder={mode === "login" ? "Пароль" : "Пароль (минимум 8 символов)"}
-            className={`${input} pr-11`}
+            className={`${INPUT} pr-11`}
           />
           <button
             type="button"
@@ -182,7 +202,7 @@ function AuthForms() {
               onChange={(e) => setPass2(e.target.value)}
               autoComplete="new-password"
               placeholder="Повторите пароль"
-              className={input}
+              className={INPUT}
             />
             <button
               type="button"
@@ -204,10 +224,7 @@ function AuthForms() {
         </button>
         {mode === "login" && (
           <p className="text-center">
-            <Link
-              href="/account/forgot"
-              className="text-sm font-semibold text-muted hover:text-ink"
-            >
+            <Link href="/account/forgot" className="text-sm font-semibold text-muted hover:text-ink">
               Забыли пароль?
             </Link>
           </p>
@@ -241,17 +258,354 @@ function AuthForms() {
   );
 }
 
-function Profile() {
-  const { customer, logout, update } = useAccount();
+/* ---------- кабинет ---------- */
+
+type Tab = "profile" | "orders" | "addresses";
+
+function Cabinet() {
+  const { logout } = useAccount();
+  const [tab, setTab] = useState<Tab>("orders");
+
+  return (
+    <div className="mt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex rounded-lg bg-paper p-1 text-sm font-bold">
+          {(
+            [
+              { key: "orders", label: "Заказы", Icon: Package },
+              { key: "addresses", label: "Адреса", Icon: MapPin },
+              { key: "profile", label: "Профиль", Icon: UserRound },
+            ] as const
+          ).map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-1.5 rounded-md px-4 py-2 transition-colors ${
+                tab === key ? "bg-white shadow-sm" : "text-muted hover:text-ink"
+              }`}
+            >
+              <Icon className={`size-4 ${tab === key ? "text-bronze" : ""}`} />
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink"
+        >
+          <LogOut className="size-4" />
+          Выйти
+        </button>
+      </div>
+
+      <div className="mt-6">
+        {tab === "orders" && <OrdersSection />}
+        {tab === "addresses" && <AddressesSection />}
+        {tab === "profile" && <ProfileSection />}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: keyof typeof TONE_CLS }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${TONE_CLS[tone]}`}>
+      {label}
+    </span>
+  );
+}
+
+/* ---------- заказы ---------- */
+
+function OrdersSection() {
   const [orders, setOrders] = useState<HttpTypes.StoreOrder[] | null>(null);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     sdk.store.order
-      .list({ limit: 20, order: "-created_at" })
+      .list({
+        limit: 50,
+        order: "-created_at",
+        fields: "+payment_status,+fulfillment_status,*items",
+      })
       .then(({ orders }) => setOrders(orders))
       .catch(() => setOrders([]));
   }, []);
+
+  if (orders === null) return <p className="text-muted">Загрузка…</p>;
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-2xl border border-line bg-white p-8 text-center">
+        <p className="font-bold">Заказов пока нет</p>
+        <p className="mt-1 text-sm text-muted">Они появятся здесь после первой покупки.</p>
+        <Link
+          href="/products"
+          className="mt-5 inline-block rounded-lg bg-ink px-6 py-3 text-xs font-bold uppercase tracking-wider text-white"
+        >
+          В каталог
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="space-y-3">
+      {orders.map((o) => (
+        <li key={o.id}>
+          <Link
+            href={`/account/orders/${o.id}`}
+            className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-white p-5 transition-shadow hover:shadow-md"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-extrabold">Заказ №{o.display_id}</p>
+                <span className="text-xs text-muted">
+                  {new Date(o.created_at as string).toLocaleDateString("ru-RU")}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <StatusBadge
+                  label={paymentStatusRu(o.payment_status)}
+                  tone={statusTone(o.payment_status)}
+                />
+                <StatusBadge
+                  label={fulfillmentStatusRu(o.fulfillment_status)}
+                  tone={statusTone(o.fulfillment_status)}
+                />
+              </div>
+              <p className="mt-2 truncate text-sm text-muted">
+                {(o.items ?? []).map((i) => i.title).join(", ")}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="font-extrabold">{formatPrice(o.total)}</span>
+              <ChevronRight className="size-4 text-muted" />
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ---------- адреса ---------- */
+
+const EMPTY_ADDRESS: AddressFields = {
+  first_name: "",
+  last_name: "",
+  phone: "",
+  address_1: "",
+  postal_code: "",
+  city: "",
+  country_code: "de",
+};
+
+function AddressesSection() {
+  const [addresses, setAddresses] = useState<HttpTypes.StoreCustomerAddress[] | null>(null);
+  const [countries, setCountries] = useState<{ iso_2: string; name: string }[]>([]);
+  const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof AddressFields, string>>>({});
+  const [busy, setBusy] = useState(false);
+
+  const load = () =>
+    sdk.store.customer
+      .listAddress({ limit: 50 })
+      .then(({ addresses }) => setAddresses(addresses))
+      .catch(() => setAddresses([]));
+
+  useEffect(() => {
+    load();
+    sdk.store.region.list().then(({ regions }) => {
+      setCountries(
+        (regions[0]?.countries ?? []).map((c) => ({
+          iso_2: c.iso_2 ?? "",
+          name: c.display_name ?? c.iso_2 ?? "",
+        }))
+      );
+    });
+  }, []);
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const fields: AddressFields = {
+      first_name: String(fd.get("first_name")),
+      last_name: String(fd.get("last_name")),
+      phone: String(fd.get("phone")),
+      address_1: String(fd.get("address_1")),
+      postal_code: String(fd.get("postal_code")),
+      city: String(fd.get("city")),
+      country_code: String(fd.get("country_code")),
+    };
+    const errs = validateAddress(fields);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setBusy(true);
+    try {
+      if (editing === "new") {
+        await sdk.store.customer.createAddress(fields);
+      } else if (editing) {
+        await sdk.store.customer.updateAddress(editing, fields);
+      }
+      setEditing(null);
+      setErrors({});
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    setBusy(true);
+    try {
+      await sdk.store.customer.deleteAddress(id);
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (addresses === null) return <p className="text-muted">Загрузка…</p>;
+
+  const current =
+    editing && editing !== "new"
+      ? addresses.find((a) => a.id === editing)
+      : undefined;
+
+  const err = (k: keyof AddressFields) =>
+    errors[k] ? <p className="mt-1 text-xs text-red-600">{errors[k]}</p> : null;
+  const cls = (k: keyof AddressFields) =>
+    errors[k] ? `${INPUT} border-red-400 focus:border-red-400` : INPUT;
+
+  return (
+    <div className="space-y-3">
+      {addresses.map((a) => (
+        <div
+          key={a.id}
+          className="flex items-start justify-between gap-4 rounded-2xl border border-line bg-white p-5"
+        >
+          <div className="text-sm">
+            <p className="font-bold">
+              {a.first_name} {a.last_name}
+            </p>
+            <p className="mt-0.5 text-muted">
+              {a.address_1}, {a.postal_code} {a.city},{" "}
+              {(a.country_code ?? "").toUpperCase()}
+            </p>
+            {a.phone && <p className="text-muted">{a.phone}</p>}
+          </div>
+          <div className="flex shrink-0 gap-1">
+            <button
+              type="button"
+              aria-label="Редактировать"
+              onClick={() => {
+                setEditing(a.id);
+                setErrors({});
+              }}
+              className="grid size-9 place-items-center rounded-lg text-muted hover:bg-paper hover:text-ink"
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Удалить"
+              disabled={busy}
+              onClick={() => remove(a.id)}
+              className="grid size-9 place-items-center rounded-lg text-muted hover:bg-paper hover:text-ink"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {editing ? (
+        <form
+          onSubmit={submit}
+          className="space-y-3 rounded-2xl border border-line bg-white p-5"
+        >
+          <p className="font-bold">
+            {editing === "new" ? "Новый адрес" : "Изменить адрес"}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <input name="first_name" placeholder="Имя" defaultValue={current?.first_name ?? EMPTY_ADDRESS.first_name} className={cls("first_name")} />
+              {err("first_name")}
+            </div>
+            <div>
+              <input name="last_name" placeholder="Фамилия" defaultValue={current?.last_name ?? ""} className={cls("last_name")} />
+              {err("last_name")}
+            </div>
+          </div>
+          <div>
+            <input name="address_1" placeholder="Улица и номер дома" defaultValue={current?.address_1 ?? ""} className={cls("address_1")} />
+            {err("address_1")}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <input name="postal_code" placeholder="Индекс" defaultValue={current?.postal_code ?? ""} className={cls("postal_code")} />
+              {err("postal_code")}
+            </div>
+            <div>
+              <input name="city" placeholder="Город" defaultValue={current?.city ?? ""} className={cls("city")} />
+              {err("city")}
+            </div>
+            <select name="country_code" defaultValue={current?.country_code ?? "de"} className={INPUT}>
+              {countries.map((c) => (
+                <option key={c.iso_2} value={c.iso_2}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <input name="phone" placeholder="Телефон" defaultValue={current?.phone ?? ""} className={cls("phone")} />
+            {err("phone")}
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-lg bg-ink px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-85 disabled:opacity-50"
+            >
+              Сохранить
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setErrors({});
+              }}
+              className="text-sm font-semibold text-muted hover:text-ink"
+            >
+              Отмена
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setEditing("new");
+            setErrors({});
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-4 text-sm font-bold text-muted transition-colors hover:border-muted hover:text-ink"
+        >
+          <Plus className="size-4" />
+          Добавить адрес
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ---------- профиль ---------- */
+
+function ProfileSection() {
+  const { customer, update } = useAccount();
+  const [saved, setSaved] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const save = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -265,46 +619,28 @@ function Profile() {
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const input =
-    "w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-bronze";
+  const requestPasswordChange = async () => {
+    if (!customer?.email) return;
+    try {
+      await sdk.auth.resetPassword("customer", "emailpass", {
+        identifier: customer.email,
+      });
+    } catch {}
+    setResetSent(true);
+  };
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="space-y-6">
       <section className="rounded-2xl border border-line bg-white p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-extrabold">
-            <UserRound className="size-5 text-bronze" />
-            Профиль
-          </h2>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink"
-          >
-            <LogOut className="size-4" />
-            Выйти
-          </button>
-        </div>
+        <h2 className="flex items-center gap-2 text-lg font-extrabold">
+          <UserRound className="size-5 text-bronze" />
+          Профиль
+        </h2>
         <p className="mt-1 text-sm text-muted">{customer?.email}</p>
         <form onSubmit={save} className="mt-4 grid gap-3 sm:grid-cols-3">
-          <input
-            name="first_name"
-            defaultValue={customer?.first_name ?? ""}
-            placeholder="Имя"
-            className={input}
-          />
-          <input
-            name="last_name"
-            defaultValue={customer?.last_name ?? ""}
-            placeholder="Фамилия"
-            className={input}
-          />
-          <input
-            name="phone"
-            defaultValue={customer?.phone ?? ""}
-            placeholder="Телефон"
-            className={input}
-          />
+          <input name="first_name" defaultValue={customer?.first_name ?? ""} placeholder="Имя" className={INPUT} />
+          <input name="last_name" defaultValue={customer?.last_name ?? ""} placeholder="Фамилия" className={INPUT} />
+          <input name="phone" defaultValue={customer?.phone ?? ""} placeholder="Телефон" className={INPUT} />
           <button
             type="submit"
             className="rounded-lg bg-ink py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-85 sm:w-40"
@@ -316,29 +652,21 @@ function Profile() {
 
       <section className="rounded-2xl border border-line bg-white p-6">
         <h2 className="flex items-center gap-2 text-lg font-extrabold">
-          <Package className="size-5 text-bronze" />
-          Заказы
+          <KeyRound className="size-5 text-bronze" />
+          Безопасность
         </h2>
-        {orders === null ? (
-          <p className="mt-3 text-sm text-muted">Загрузка…</p>
-        ) : orders.length === 0 ? (
+        {resetSent ? (
           <p className="mt-3 text-sm text-muted">
-            Заказов пока нет — они появятся здесь после первой покупки.
+            Ссылка для смены пароля отправлена на {customer?.email}.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-line">
-            {orders.map((o) => (
-              <li key={o.id} className="flex items-center justify-between py-3 text-sm">
-                <div>
-                  <p className="font-bold">Заказ #{o.display_id}</p>
-                  <p className="text-xs text-muted">
-                    {new Date(o.created_at as string).toLocaleDateString("ru-RU")}
-                  </p>
-                </div>
-                <span className="font-extrabold">{formatPrice(o.total)}</span>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            onClick={requestPasswordChange}
+            className="mt-3 rounded-lg border border-ink/20 px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-paper"
+          >
+            Сменить пароль
+          </button>
         )}
       </section>
     </div>

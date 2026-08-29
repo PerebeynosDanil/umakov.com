@@ -1,3 +1,6 @@
+# локальный портативный PostgreSQL (бинарники + данные)
+.pg/
+
 # зависимости и сборка
 node_modules/
 .next/
@@ -9,6 +12,7 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.template
 
 # сырая выгрузка с Shopify (11 тыс. фото) — в git не кладём, кроме метаданных
 assets/*

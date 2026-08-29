@@ -285,11 +285,18 @@ function mapProduct(
       }
       seenSkus.add(sku);
     }
-    // значения опций могут сами содержать " / " — тогда частей больше,
+    // выгрузка добавляет фантомное "Default Title" в конец массива опций;
+    // а значения опций могут сами содержать " / " — тогда частей больше,
     // чем опций; восстанавливаем по настоящим спискам значений
     let vals: string[] = v.options;
     if (vals.length !== optionNames.length) {
-      vals = matchOptionValues(v.options, p.options) ?? vals;
+      const stripped = vals.filter((x) => x !== "Default Title");
+      vals =
+        stripped.length === optionNames.length
+          ? stripped
+          : matchOptionValues(stripped, p.options) ??
+            matchOptionValues(vals, p.options) ??
+            vals;
     }
     const optionsObj: Record<string, string> = {};
     vals.forEach((val, idx) => {

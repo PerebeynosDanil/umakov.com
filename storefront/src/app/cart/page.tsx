@@ -92,7 +92,7 @@ export default function CartPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-extrabold">
-                        {formatPrice(item.total)}
+                        {formatPrice(item.total ?? item.unit_price * item.quantity)}
                       </span>
                       <button
                         type="button"

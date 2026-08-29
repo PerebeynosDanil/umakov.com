@@ -14,6 +14,9 @@ import { sdk } from "@/lib/medusa";
 
 const CART_ID_KEY = "umakov_cart_id";
 
+// суммы строк API по умолчанию не отдаёт — запрашиваем явно
+const CART_FIELDS = "+items.total,+items.subtotal";
+
 type CartContextValue = {
   cart: HttpTypes.StoreCart | null;
   itemCount: number;
@@ -48,7 +51,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       typeof window !== "undefined" ? localStorage.getItem(CART_ID_KEY) : null;
     if (!id) return null;
     try {
-      const { cart } = await sdk.store.cart.retrieve(id);
+      const { cart } = await sdk.store.cart.retrieve(id, { fields: CART_FIELDS });
       // оплаченная корзина больше не редактируется — начинаем новую
       if (cart.completed_at) {
         localStorage.removeItem(CART_ID_KEY);
@@ -89,7 +92,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           quantity,
         });
         // ответ мутации приходит без пересчитанных сумм — берём свежую корзину
-        const { cart } = await sdk.store.cart.retrieve(current.id);
+        const { cart } = await sdk.store.cart.retrieve(current.id, {
+          fields: CART_FIELDS,
+        });
         setCart(cart);
       } finally {
         setBusy(false);
@@ -104,7 +109,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       try {
         await sdk.store.cart.updateLineItem(cart.id, lineId, { quantity });
-        const { cart: updated } = await sdk.store.cart.retrieve(cart.id);
+        const { cart: updated } = await sdk.store.cart.retrieve(cart.id, {
+          fields: CART_FIELDS,
+        });
         setCart(updated);
       } finally {
         setBusy(false);
@@ -119,7 +126,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       try {
         await sdk.store.cart.deleteLineItem(cart.id, lineId);
-        const { cart: updated } = await sdk.store.cart.retrieve(cart.id);
+        const { cart: updated } = await sdk.store.cart.retrieve(cart.id, {
+          fields: CART_FIELDS,
+        });
         setCart(updated);
       } finally {
         setBusy(false);

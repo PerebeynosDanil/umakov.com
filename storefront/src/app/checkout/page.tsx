@@ -300,7 +300,9 @@ export default function CheckoutPage() {
                 <span className="line-clamp-1 text-muted">
                   {i.quantity} × {i.product_title ?? i.title}
                 </span>
-                <span className="shrink-0 font-semibold">{formatPrice(i.total)}</span>
+                <span className="shrink-0 font-semibold">
+                  {formatPrice(i.total ?? i.unit_price * i.quantity)}
+                </span>
               </li>
             ))}
           </ul>

@@ -16,6 +16,18 @@ body {
   font-family: var(--font-manrope), system-ui, -apple-system, sans-serif;
 }
 
+/* Tailwind 4 убрал cursor:pointer у кнопок — возвращаем на всё кликабельное */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+select,
+summary,
+label[for] {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* горизонтальная лента проектов без видимого скроллбара */
 .no-scrollbar {
   scrollbar-width: none;

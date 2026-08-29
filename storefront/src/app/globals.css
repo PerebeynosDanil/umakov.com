@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #17181b;
+  --color-paper: #f4f5f7;
+  --color-line: #e5e7ea;
+  --color-muted: #6d7278;
+  --color-bronze: #a6835b;
+  --color-bronze-soft: #f2ebe1;
+  --font-sans: var(--font-manrope);
+}
+
+body {
+  background: #ffffff;
+  color: #17181b;
+  font-family: var(--font-manrope), system-ui, -apple-system, sans-serif;
+}
+
+/* горизонтальная лента проектов без видимого скроллбара */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

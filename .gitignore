@@ -1,0 +1,26 @@
+# зависимости и сборка
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# окружение и секреты
+.env
+.env.*
+!.env.example
+
+# сырая выгрузка с Shopify (11 тыс. фото) — в git не кладём, кроме метаданных
+assets/*
+!assets/_meta/
+!assets/README.md
+
+# служебные файлы Claude / AI-агентов — в репозиторий не кладём
+.claude/
+CLAUDE.md
+AGENTS.md
+
+# системное
+.DS_Store
+Thumbs.db
+*.log

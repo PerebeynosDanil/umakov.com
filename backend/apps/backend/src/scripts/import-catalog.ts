@@ -119,10 +119,7 @@ export default async function importCatalog({ container }: ExecArgs) {
           });
           done++;
         } catch (err) {
-          failed.push({
-            handle: chunk[j].handle,
-            error: err instanceof Error ? err.message : String(err),
-          });
+          failed.push({ handle: chunk[j].handle, error: errorText(err) });
         }
       }
     }
@@ -213,6 +210,47 @@ async function ensureCategories(
   return idByPath;
 }
 
+/**
+ * Раскладывает части заголовка варианта по опциям товара: каждая опция
+ * получает одну или несколько подряд идущих частей (склеенных " / "),
+ * причём результат обязан входить в список значений этой опции.
+ */
+function matchOptionValues(
+  parts: string[],
+  options: CatalogOption[]
+): string[] | null {
+  const sets = options.map((o) => new Set(o.values));
+  const res: string[] = new Array(options.length);
+  const dfs = (pi: number, oi: number): boolean => {
+    if (oi === options.length) return pi === parts.length;
+    const maxTake = parts.length - pi - (options.length - oi - 1);
+    for (let take = maxTake; take >= 1; take--) {
+      const val = parts.slice(pi, pi + take).join(" / ");
+      if (sets[oi].has(val)) {
+        res[oi] = val;
+        if (dfs(pi + take, oi + 1)) return true;
+      }
+    }
+    return false;
+  };
+  return dfs(0, 0) ? res : null;
+}
+
+function errorText(err: unknown): string {
+  const e = err as any;
+  if (e?.message) return String(e.message);
+  if (Array.isArray(e?.errors)) {
+    return e.errors
+      .map((x: any) => x?.error?.message ?? x?.message ?? JSON.stringify(x))
+      .join("; ");
+  }
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
 function slugify(s: string): string {
   return (
     s
@@ -247,8 +285,14 @@ function mapProduct(
       }
       seenSkus.add(sku);
     }
+    // значения опций могут сами содержать " / " — тогда частей больше,
+    // чем опций; восстанавливаем по настоящим спискам значений
+    let vals: string[] = v.options;
+    if (vals.length !== optionNames.length) {
+      vals = matchOptionValues(v.options, p.options) ?? vals;
+    }
     const optionsObj: Record<string, string> = {};
-    v.options.forEach((val, idx) => {
+    vals.forEach((val, idx) => {
       optionsObj[optionNames[idx] ?? `Option ${idx + 1}`] = val;
     });
     return {

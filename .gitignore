@@ -24,6 +24,9 @@ assets/*
 CLAUDE.md
 AGENTS.md
 
+# отчёт об ошибках импорта (генерируется скриптом)
+import-errors.json
+
 # системное
 .DS_Store
 Thumbs.db

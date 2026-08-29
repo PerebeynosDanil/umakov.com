@@ -82,15 +82,21 @@ export default function OrderDetailPage() {
             <ul className="divide-y divide-line">
               {(order.items ?? []).map((item) => (
                 <li key={item.id} className="flex gap-4 p-4">
-                  <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-line bg-white">
+                  <Link
+                    href={item.product_handle ? `/products/${item.product_handle}` : "/products"}
+                    className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-line bg-white"
+                  >
                     {item.thumbnail && (
                       <Image src={item.thumbnail} alt="" fill sizes="64px" className="object-contain p-1" />
                     )}
-                  </div>
+                  </Link>
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <p className="line-clamp-2 text-sm font-bold leading-snug">
+                    <Link
+                      href={item.product_handle ? `/products/${item.product_handle}` : "/products"}
+                      className="line-clamp-2 text-sm font-bold leading-snug transition-colors hover:text-bronze"
+                    >
                       {item.product_title ?? item.title}
-                    </p>
+                    </Link>
                     {item.variant_title && item.variant_title !== "Default Title" && (
                       <p className="mt-0.5 text-xs text-muted">{item.variant_title}</p>
                     )}

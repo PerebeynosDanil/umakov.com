@@ -8,6 +8,7 @@ import { sdk } from "@/lib/medusa";
 import { useCart } from "@/providers/cart";
 import { useAccount } from "@/providers/account";
 import { formatPrice } from "@/lib/format";
+import { validateCheckout, type CheckoutFields } from "@/lib/validation";
 
 type Step = "address" | "shipping" | "payment";
 
@@ -25,6 +26,9 @@ export default function CheckoutPage() {
   const [countries, setCountries] = useState<{ iso_2: string; name: string }[]>([]);
   const [order, setOrder] = useState<HttpTypes.StoreOrder | null>(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof CheckoutFields, string>>
+  >({});
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -59,20 +63,28 @@ export default function CheckoutPage() {
   const submitAddress = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    setBusy(true);
     const fd = new FormData(e.currentTarget);
-    const address = {
+    const fields: CheckoutFields = {
       first_name: String(fd.get("first_name")),
       last_name: String(fd.get("last_name")),
+      email: String(fd.get("email")),
       phone: String(fd.get("phone")),
       address_1: String(fd.get("address_1")),
       postal_code: String(fd.get("postal_code")),
       city: String(fd.get("city")),
       country_code: String(fd.get("country_code")),
     };
+    const errs = validateCheckout(fields);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError("Проверьте выделенные поля.");
+      return;
+    }
+    setBusy(true);
+    const { email, ...address } = fields;
     try {
       await sdk.store.cart.update(cart.id, {
-        email: String(fd.get("email")),
+        email: email.trim(),
         shipping_address: address,
         billing_address: address,
       });
@@ -81,8 +93,14 @@ export default function CheckoutPage() {
       });
       setOptions(shipping_options);
       setStep("shipping");
-    } catch {
-      setError("Не удалось сохранить адрес. Проверьте поля и попробуйте ещё раз.");
+    } catch (err) {
+      // сервер тоже проверяет данные — показываем его сообщение, если есть
+      const msg = err instanceof Error ? err.message : "";
+      setError(
+        msg && msg.length < 300
+          ? msg
+          : "Не удалось сохранить адрес. Проверьте поля и попробуйте ещё раз."
+      );
     } finally {
       setBusy(false);
     }
@@ -126,6 +144,10 @@ export default function CheckoutPage() {
 
   const input =
     "w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-bronze";
+  const fieldCls = (k: keyof CheckoutFields) =>
+    fieldErrors[k]
+      ? `${input} border-red-400 focus:border-red-400`
+      : input;
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
   return (
@@ -155,19 +177,40 @@ export default function CheckoutPage() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_300px]">
         <div>
           {step === "address" && (
-            <form onSubmit={submitAddress} className="space-y-3 rounded-2xl border border-line bg-white p-6">
+            <form onSubmit={submitAddress} noValidate className="space-y-3 rounded-2xl border border-line bg-white p-6">
               <div className="grid gap-3 sm:grid-cols-2">
-                <input name="first_name" required placeholder="Имя" defaultValue={customer?.first_name ?? ""} className={input} />
-                <input name="last_name" required placeholder="Фамилия" defaultValue={customer?.last_name ?? ""} className={input} />
+                <div>
+                  <input name="first_name" required placeholder="Имя" defaultValue={customer?.first_name ?? ""} className={fieldCls("first_name")} />
+                  <FieldError k="first_name" errors={fieldErrors} />
+                </div>
+                <div>
+                  <input name="last_name" required placeholder="Фамилия" defaultValue={customer?.last_name ?? ""} className={fieldCls("last_name")} />
+                  <FieldError k="last_name" errors={fieldErrors} />
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <input name="email" type="email" required placeholder="Эл. почта" defaultValue={customer?.email ?? ""} className={input} />
-                <input name="phone" required placeholder="Телефон" defaultValue={customer?.phone ?? ""} className={input} />
+                <div>
+                  <input name="email" type="email" required placeholder="Эл. почта" defaultValue={customer?.email ?? ""} className={fieldCls("email")} />
+                  <FieldError k="email" errors={fieldErrors} />
+                </div>
+                <div>
+                  <input name="phone" required placeholder="Телефон, например +49 151 2345678" defaultValue={customer?.phone ?? ""} className={fieldCls("phone")} />
+                  <FieldError k="phone" errors={fieldErrors} />
+                </div>
               </div>
-              <input name="address_1" required placeholder="Улица, дом" className={input} />
+              <div>
+                <input name="address_1" required placeholder="Улица и номер дома" className={fieldCls("address_1")} />
+                <FieldError k="address_1" errors={fieldErrors} />
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <input name="postal_code" required placeholder="Индекс" className={input} />
-                <input name="city" required placeholder="Город" className={input} />
+                <div>
+                  <input name="postal_code" required placeholder="Индекс" className={fieldCls("postal_code")} />
+                  <FieldError k="postal_code" errors={fieldErrors} />
+                </div>
+                <div>
+                  <input name="city" required placeholder="Город" className={fieldCls("city")} />
+                  <FieldError k="city" errors={fieldErrors} />
+                </div>
                 <select name="country_code" defaultValue="de" className={input}>
                   {countries.map((c) => (
                     <option key={c.iso_2} value={c.iso_2}>
@@ -279,6 +322,17 @@ export default function CheckoutPage() {
       </div>
     </div>
   );
+}
+
+function FieldError({
+  k,
+  errors,
+}: {
+  k: keyof CheckoutFields;
+  errors: Partial<Record<keyof CheckoutFields, string>>;
+}) {
+  if (!errors[k]) return null;
+  return <p className="mt-1 text-xs text-red-600">{errors[k]}</p>;
 }
 
 function SuccessView({ order }: { order: HttpTypes.StoreOrder }) {

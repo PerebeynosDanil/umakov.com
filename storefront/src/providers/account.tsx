@@ -77,19 +77,46 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       first_name: string;
       last_name: string;
     }) => {
-      await sdk.auth.register("customer", "emailpass", {
-        email: data.email,
-        password: data.password,
-      });
-      await sdk.store.customer.create({
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-      });
-      await sdk.auth.login("customer", "emailpass", {
-        email: data.email,
-        password: data.password,
-      });
+      let freshIdentity = true;
+      try {
+        await sdk.auth.register("customer", "emailpass", {
+          email: data.email,
+          password: data.password,
+        });
+      } catch {
+        // идентичность уже существует (например, прошлая регистрация
+        // оборвалась на полпути) — пробуем войти с этим же паролем;
+        // если пароль другой, здесь бросит и покажем обычную ошибку
+        freshIdentity = false;
+        await sdk.auth.login("customer", "emailpass", {
+          email: data.email,
+          password: data.password,
+        });
+      }
+      if (freshIdentity) {
+        await sdk.store.customer.create({
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+        });
+        await sdk.auth.login("customer", "emailpass", {
+          email: data.email,
+          password: data.password,
+        });
+      } else {
+        // вошли по существующей идентичности; если покупателя ещё
+        // нет — досоздаём его и обновляем сессию
+        try {
+          await sdk.store.customer.retrieve();
+        } catch {
+          await sdk.store.customer.create({
+            email: data.email,
+            first_name: data.first_name,
+            last_name: data.last_name,
+          });
+          await sdk.auth.refresh();
+        }
+      }
       const { customer } = await sdk.store.customer.retrieve();
       setCustomer(customer);
       await claimCart();

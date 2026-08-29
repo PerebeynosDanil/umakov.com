@@ -8,13 +8,7 @@ import { ChevronLeft, Landmark } from "lucide-react";
 import type { HttpTypes } from "@medusajs/types";
 import { sdk } from "@/lib/medusa";
 import { formatPrice } from "@/lib/format";
-import {
-  fulfillmentStatusRu,
-  orderStatusRu,
-  paymentStatusRu,
-  statusTone,
-  TONE_CLS,
-} from "@/lib/order-status";
+import { orderBadges, TONE_CLS } from "@/lib/order-status";
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,12 +45,6 @@ export default function OrderDetailPage() {
     );
   }
 
-  const badge = (label: string, tone: keyof typeof TONE_CLS) => (
-    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${TONE_CLS[tone]}`}>
-      {label}
-    </span>
-  );
-
   const addr = order.shipping_address;
 
   return (
@@ -78,12 +66,14 @@ export default function OrderDetailPage() {
         </span>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {badge(orderStatusRu(order.status), statusTone(order.status))}
-        {badge(paymentStatusRu(order.payment_status), statusTone(order.payment_status))}
-        {badge(
-          fulfillmentStatusRu(order.fulfillment_status),
-          statusTone(order.fulfillment_status)
-        )}
+        {orderBadges(order).map((b) => (
+          <span
+            key={b.label}
+            className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${TONE_CLS[b.tone]}`}
+          >
+            {b.label}
+          </span>
+        ))}
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_300px]">

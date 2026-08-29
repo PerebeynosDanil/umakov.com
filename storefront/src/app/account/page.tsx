@@ -21,12 +21,7 @@ import { useAccount } from "@/providers/account";
 import { sdk } from "@/lib/medusa";
 import { formatPrice } from "@/lib/format";
 import { generatePassword } from "@/lib/password";
-import {
-  fulfillmentStatusRu,
-  paymentStatusRu,
-  statusTone,
-  TONE_CLS,
-} from "@/lib/order-status";
+import { orderBadges, TONE_CLS } from "@/lib/order-status";
 import { validateAddress, type AddressFields } from "@/lib/validation";
 
 const INPUT =
@@ -365,14 +360,9 @@ function OrdersSection() {
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <StatusBadge
-                  label={paymentStatusRu(o.payment_status)}
-                  tone={statusTone(o.payment_status)}
-                />
-                <StatusBadge
-                  label={fulfillmentStatusRu(o.fulfillment_status)}
-                  tone={statusTone(o.fulfillment_status)}
-                />
+                {orderBadges(o).map((b) => (
+                  <StatusBadge key={b.label} label={b.label} tone={b.tone} />
+                ))}
               </div>
               <p className="mt-2 truncate text-sm text-muted">
                 {(o.items ?? []).map((i) => i.title).join(", ")}

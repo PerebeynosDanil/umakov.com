@@ -22,7 +22,7 @@ export const PAYMENT_STATUS_RU: Record<string, string> = {
 };
 
 export const FULFILLMENT_STATUS_RU: Record<string, string> = {
-  not_fulfilled: "В обработке",
+  not_fulfilled: "Готовится к отправке",
   partially_fulfilled: "Собран частично",
   fulfilled: "Собран",
   partially_shipped: "Отправлен частично",
@@ -70,3 +70,39 @@ export const TONE_CLS: Record<ReturnType<typeof statusTone>, string> = {
   red: "bg-red-50 text-red-600 border-red-200",
   gray: "bg-paper text-muted border-line",
 };
+
+export type OrderBadge = { label: string; tone: ReturnType<typeof statusTone> };
+
+/**
+ * Какие бейджи показывать у заказа:
+ * - отменённый — только «Отменён» (статусы оплаты/доставки не имеют смысла);
+ * - обычный — оплата и доставка; общий статус добавляется, лишь когда он
+ *   несёт что-то своё (завершён, требует действия), чтобы не дублировать
+ *   «В обработке».
+ */
+export function orderBadges(o: {
+  status?: string | null;
+  payment_status?: string | null;
+  fulfillment_status?: string | null;
+}): OrderBadge[] {
+  if (o.status === "canceled") {
+    return [{ label: "Отменён", tone: "red" }];
+  }
+  const badges: OrderBadge[] = [];
+  if (o.status && o.status !== "pending" && o.status !== "draft") {
+    badges.push({ label: orderStatusRu(o.status), tone: statusTone(o.status) });
+  }
+  if (o.payment_status) {
+    badges.push({
+      label: paymentStatusRu(o.payment_status),
+      tone: statusTone(o.payment_status),
+    });
+  }
+  if (o.fulfillment_status) {
+    badges.push({
+      label: fulfillmentStatusRu(o.fulfillment_status),
+      tone: statusTone(o.fulfillment_status),
+    });
+  }
+  return badges;
+}

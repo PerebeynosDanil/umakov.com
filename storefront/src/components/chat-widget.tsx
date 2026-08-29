@@ -426,18 +426,24 @@ function TrackTab() {
               </span>
             </div>
             <dl className="mt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-muted">Оплата</dt>
-                <dd className="font-semibold">
-                  {paymentStatusRu(result.payment_status)}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted">Доставка</dt>
-                <dd className="font-semibold">
-                  {fulfillmentStatusRu(result.fulfillment_status)}
-                </dd>
-              </div>
+              {result.status === "canceled" ? (
+                <p className="font-semibold text-red-600">Заказ отменён</p>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <dt className="text-muted">Оплата</dt>
+                    <dd className="font-semibold">
+                      {paymentStatusRu(result.payment_status)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted">Доставка</dt>
+                    <dd className="font-semibold">
+                      {fulfillmentStatusRu(result.fulfillment_status)}
+                    </dd>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between border-t border-line pt-1.5">
                 <dt className="text-muted">Сумма</dt>
                 <dd className="font-extrabold">{formatPrice(result.total)}</dd>
